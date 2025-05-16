@@ -18,4 +18,10 @@ def like_player(uid: str = Query(...), region: str = Query(...)):
     if response.status_code != 200:
         return {"error": "Failed to fetch data from upstream API."}
 
-    return response.json()
+    data = response.json()
+
+    # Xóa khóa "owner" nếu tồn tại
+    if "owner" in data:
+        del data["owner"]
+
+    return data
