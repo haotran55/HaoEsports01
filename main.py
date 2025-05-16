@@ -13,21 +13,36 @@ def like_player(uid: str = Query(...), region: str = Query(...)):
         "server_name": region,
         "key": API_KEY
     }
-    
+
     try:
         response = requests.get(API_URL, params=params)
-        response.raise_for_status()  # Gây lỗi nếu mã trạng thái không phải 200
+        response.raise_for_status()
 
-        data = response.json()
-        
-        # Xóa trường "owner" nếu có
-        if isinstance(data, dict) and "owner" in data:
-            del data["owner"]
+        try:
+            data = response.json()
+        except ValueError:
+            return {"error": "API phụ trả về dữ liệu không hợp lệ (không phải JSON)."}
+
+        # Nếu có lỗi trong dữ liệu JSON
+        if "status" in data and data["status"] != "Success":
+            return {
+                "error": "API phụ trả về lỗi.",
+                "message": data.get("message", "UID không hợp lệ hoặc server đang lỗi.")
+            }
+
+        # Xóa 'owner' nếu có
+        data.pop("owner", None)
 
         return data
 
-    except requests.exceptions.RequestException as e:
-        return {"error": "Failed to fetch from API", "detail": str(e)}
+    except requests.exceptions.HTTPError as http_err:
+        # Lỗi HTTP cụ thể
+        if response.status_code == 500:
+            return {"error": "Lỗi máy chủ từ API phụ. Vui lòng thử lại sau."}
+        elif response.status_code == 404:
+            return {"error": "Không tìm thấy UID hoặc vùng máy chủ không hợp lệ."}
+        else:
+            return {"error": f"Lỗi HTTP từ API phụ ({response.status_code})."}
 
-    except ValueError:
-        return {"error": "Invalid JSON returned from API"}
+    except requests.exceptions.RequestException:
+        return {"error": "Không thể kết nối tới API phụ. Kiểm tra mạng hoặc thử lại sau."}
