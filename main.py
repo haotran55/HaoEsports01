@@ -23,20 +23,20 @@ def like_player(uid: str = Query(...), region: str = Query(...)):
         except ValueError:
             return {"error": "API phụ trả về dữ liệu không hợp lệ (không phải JSON)."}
 
-        # Nếu có lỗi trong dữ liệu JSON
-        if "status" in data and data["status"] != "Success":
+        # Kiểm tra dữ liệu trả về có hợp lệ hay không
+        if not data.get("UID") or not data.get("PlayerNickname"):
             return {
                 "error": "API phụ trả về lỗi.",
-                "message": data.get("message", "UID không hợp lệ hoặc server đang lỗi.")
+                "message": data.get("message", "UID không hợp lệ hoặc server đang lỗi."),
+                "raw_data": data
             }
 
-        # Xóa 'owner' nếu có
+        # Xóa trường 'owner' nếu có
         data.pop("owner", None)
 
         return data
 
-    except requests.exceptions.HTTPError as http_err:
-        # Lỗi HTTP cụ thể
+    except requests.exceptions.HTTPError:
         if response.status_code == 500:
             return {"error": "Lỗi máy chủ từ API phụ. Vui lòng thử lại sau."}
         elif response.status_code == 404:
