@@ -13,15 +13,21 @@ def like_player(uid: str = Query(...), region: str = Query(...)):
         "server_name": region,
         "key": API_KEY
     }
-    response = requests.get(API_URL, params=params)
+    
+    try:
+        response = requests.get(API_URL, params=params)
+        response.raise_for_status()  # Gây lỗi nếu mã trạng thái không phải 200
 
-    if response.status_code != 200:
-        return {"error": "Failed to fetch data from upstream API."}
+        data = response.json()
+        
+        # Xóa trường "owner" nếu có
+        if isinstance(data, dict) and "owner" in data:
+            del data["owner"]
 
-    data = response.json()
+        return data
 
-    # Xóa khóa "owner" nếu tồn tại
-    if "owner" in data:
-        del data["owner"]
+    except requests.exceptions.RequestException as e:
+        return {"error": "Failed to fetch from API", "detail": str(e)}
 
-    return data
+    except ValueError:
+        return {"error": "Invalid JSON returned from API"}
