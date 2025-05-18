@@ -1,4 +1,5 @@
 #this code was made by cutehack
+from google.protobuf import message
 
 from flask import Flask, request, jsonify
 import asyncio
