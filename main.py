@@ -4,7 +4,7 @@ import requests
 app = FastAPI()
 
 API_KEY = "qqwweerrb"
-API_URL = "https://freefirelike-api.onrender.com/like"
+API_URL = "https://160.250.137.144:5001/like"
 
 @app.get("/haoesports")
 def like_player(uid: str = Query(...), region: str = Query(...)):
