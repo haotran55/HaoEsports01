@@ -21,7 +21,7 @@ def is_key_valid(api_key):
 
 def fetch_data(region, uid):
     """Fetch data from the new API based on region and uid."""
-    url = f"http://hyper-full-info-api.vercel.app/info?uid={uid}&region={region}"
+    url = f"https://ffwlxd-info.vercel.app/player-info?region={region}&uid={uid}"
     
     response = requests.get(url)
     if response.status_code == 200:
@@ -64,7 +64,7 @@ def overlay_images(base_image, item_ids):
 
     return base
 
-@app.route('/api', methods=['GET'])
+@app.route('/api/image', methods=['GET'])
 def api():
     """API endpoint to get the overlaid image."""
     region = request.args.get('region')
