@@ -5,73 +5,77 @@ from io import BytesIO
 
 app = Flask(__name__)
 
-# Base image URL
+# Base image URL (ảnh vòng tròn 8 ô)
 BASE_IMAGE_URL = "https://iili.io/3iSrn5u.jpg"
 
-# Example API keys (you can store these in a database or a config file)
+# API Key whitelist
 API_KEYS = {
-    "tranhao116": True,  # Active key
-    "2DAY": True, # Inactive key
-    "busy": False   # Active key
+    "tranhao116": True,
+    "2DAY": False,
+    "busy": False
 }
 
 def is_key_valid(api_key):
-    """Check if the provided API key is valid and active."""
     return API_KEYS.get(api_key, False)
 
 def fetch_data(region, uid):
-    """Fetch data from the new API based on region and uid."""
+    """Lấy dữ liệu từ API Free Fire."""
     url = f"https://ffwlxd-info.vercel.app/player-info?region={region}&uid={uid}"
-    
-    response = requests.get(url)
-    if response.status_code == 200:
+    try:
+        response = requests.get(url, timeout=10)
+        response.raise_for_status()
         return response.json()
-    else:
-        print(f"Error fetching data: {response.status_code}, {response.text}")  # Print error details
+    except Exception as e:
+        print(f"Error fetching data: {e}")
         return None
 
-def overlay_images(base_image, item_ids):
-    """Overlay item images on the base image."""
-    # Load the base image
-    base = Image.open(BytesIO(requests.get(base_image).content)).convert("RGBA")
-    
-    # Define positions for each item (x, y)
-    positions = [
-        (485, 473),   # Position for item 1
-        (295, 546),  # Position for item 2
-        (290, 40),  # Position for item 3
-        (479, 100),   # Position for item 4
-        (550, 280),  # Position for item 5
-        (100, 470)   # Position for item 6
-    ]
+def overlay_images(base_image_url, item_ids):
+    """Chồng item lên ảnh gốc theo bố cục vòng tròn."""
+    try:
+        base = Image.open(BytesIO(requests.get(base_image_url).content)).convert("RGBA")
+    except Exception as e:
+        print(f"Error loading base image: {e}")
+        return None
 
-    # Define sizes for each item (width, height)
-    sizes = [
-        (130, 130),   # Size for item 1
-        (130, 130),   # Size for item 2
-        (130, 130),   # Size for item 3
-        (130, 130),   # Size for item 4
-        (130, 130),   # Size for item 5
-        (130, 130)    # Size for item 6
+    # Tọa độ các vị trí theo hình tròn (720x720)
+    positions = [
+        (360, 90),    # Top
+        (515, 145),   # Top-right
+        (615, 265),   # Right
+        (610, 420),   # Bottom-right
+        (495, 540),   # Bottom
+        (225, 540),   # Bottom-left
+        (110, 420),   # Left
+        (105, 265)    # Top-left
     ]
-    
-    for idx, item_id in enumerate(item_ids):
-        item_image_url = f"https://pika-ffitmes-api.vercel.app/?item_id={item_id}&watermark=TaitanApi&key=PikaApis"
-        item = Image.open(BytesIO(requests.get(item_image_url).content)).convert("RGBA")
-        # Resize the item image using LANCZOS for high-quality downsampling
-        item = item.resize((sizes[idx][0], sizes[idx][1]), Image.LANCZOS)
-        base.paste(item, (positions[idx][0], positions[idx][1]), item)
+    size = (110, 110)
+
+    for idx in range(min(8, len(item_ids))):
+        item_id = item_ids[idx]
+        item_url = f"https://pika-ffitmes-api.vercel.app/?item_id={item_id}&watermark=TaitanApi&key=PikaApis"
+
+        try:
+            item_img = Image.open(BytesIO(requests.get(item_url).content)).convert("RGBA")
+            item_img = item_img.resize(size, Image.LANCZOS)
+
+            # Canh giữa hình khi dán vào base image
+            pos_x = positions[idx][0] - size[0] // 2
+            pos_y = positions[idx][1] - size[1] // 2
+
+            base.paste(item_img, (pos_x, pos_y), item_img)
+        except Exception as e:
+            print(f"Error processing item {item_id}: {e}")
+            continue
 
     return base
 
 @app.route('/api/image', methods=['GET'])
-def api():
-    """API endpoint to get the overlaid image."""
+def generate_image():
     region = request.args.get('region')
     uid = request.args.get('uid')
-    api_key = request.args.get('key')  # Get the API key from the request
+    api_key = request.args.get('key')
 
-    if not region or not uid or not api_key:
+    if not all([region, uid, api_key]):
         return jsonify({"error": "Missing region, uid, or key parameter"}), 400
 
     if not is_key_valid(api_key):
@@ -81,21 +85,16 @@ def api():
     if not data or "AccountProfileInfo" not in data or "EquippedOutfit" not in data["AccountProfileInfo"]:
         return jsonify({"error": "Failed to fetch data. Recheck uid and region"}), 500
 
-    item_ids = data["AccountProfileInfo"]["EquippedOutfit"]
-    
-    # Ensure we only take the first 6 item IDs
-    item_ids = item_ids[:8]
+    item_ids = data["AccountProfileInfo"]["EquippedOutfit"][:8]
 
-    # Overlay images on the base image
-    overlaid_image = overlay_images(BASE_IMAGE_URL, item_ids)
+    final_image = overlay_images(BASE_IMAGE_URL, item_ids)
+    if final_image is None:
+        return jsonify({"error": "Failed to generate image"}), 500
 
-    # Save the image to a BytesIO object
     img_io = BytesIO()
-    overlaid_image.save(img_io, 'PNG')
+    final_image.save(img_io, 'PNG')
     img_io.seek(0)
-
     return send_file(img_io, mimetype='image/png')
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000, debug=True)
-#this code was made by cutehack
