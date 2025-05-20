@@ -6,7 +6,7 @@ from io import BytesIO
 app = Flask(__name__)
 
 # Base image URL
-BASE_IMAGE_URL = "https://iili.io/3iSjkYl.jpg"
+BASE_IMAGE_URL = "https://iili.io/3iSrn5u.jpg"
 
 # Example API keys (you can store these in a database or a config file)
 API_KEYS = {
@@ -84,7 +84,7 @@ def api():
     item_ids = data["AccountProfileInfo"]["EquippedOutfit"]
     
     # Ensure we only take the first 6 item IDs
-    item_ids = item_ids[:6]
+    item_ids = item_ids[:8]
 
     # Overlay images on the base image
     overlaid_image = overlay_images(BASE_IMAGE_URL, item_ids)
