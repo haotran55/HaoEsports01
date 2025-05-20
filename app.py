@@ -47,7 +47,7 @@ def overlay_images(base_image_url, item_ids):
 
     for idx in range(min(6, len(item_ids))):
         item_id = item_ids[idx]
-        item_url = f"https://pika-ffitmes-api.vercel.app/?item_id={item_id}&watermark=TaitanApi&key=PikaApis"
+        item_url = f"https://system.ffgarena.cloud/api/iconsff?image={item_id}.png"
 
         try:
             item_img = Image.open(BytesIO(requests.get(item_url).content)).convert("RGBA")
