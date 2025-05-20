@@ -6,7 +6,7 @@ from io import BytesIO
 app = Flask(__name__)
 
 # Base image URL
-BASE_IMAGE_URL = "https://iili.io/39iE4rF.jpg"
+BASE_IMAGE_URL = "https://iili.io/3iSjkYl.jpg"
 
 # Example API keys (you can store these in a database or a config file)
 API_KEYS = {
