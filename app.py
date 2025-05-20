@@ -5,21 +5,22 @@ from io import BytesIO
 
 app = Flask(__name__)
 
-# Base image URL (ảnh vòng tròn 8 ô)
+# Base image URL
 BASE_IMAGE_URL = "https://iili.io/3iSrn5u.jpg"
 
-# API Key whitelist
+# Example API keys
 API_KEYS = {
-    "tranhao116": True,
-    "2DAY": False,
-    "busy": False
+    "tranhao116": True,  # Active
+    "2DAY": False,        # Inactive
+    "busy": False         # Inactive
 }
 
 def is_key_valid(api_key):
+    """Check if the provided API key is valid and active."""
     return API_KEYS.get(api_key, False)
 
 def fetch_data(region, uid):
-    """Lấy dữ liệu từ API Free Fire."""
+    """Fetch player info data from external API."""
     url = f"https://ffwlxd-info.vercel.app/player-info?region={region}&uid={uid}"
     try:
         response = requests.get(url, timeout=10)
@@ -30,39 +31,28 @@ def fetch_data(region, uid):
         return None
 
 def overlay_images(base_image_url, item_ids):
-    """Chồng item lên ảnh gốc theo bố cục vòng tròn."""
+    """Overlay item images on top of base image."""
     try:
         base = Image.open(BytesIO(requests.get(base_image_url).content)).convert("RGBA")
     except Exception as e:
         print(f"Error loading base image: {e}")
         return None
 
-    # Tọa độ các vị trí theo hình tròn (720x720)
+    # Positions and sizes for 6 items
     positions = [
-        (360, 90),    # Top
-        (515, 145),   # Top-right
-        (615, 265),   # Right
-        (610, 420),   # Bottom-right
-        (495, 540),   # Bottom
-        (225, 540),   # Bottom-left
-        (110, 420),   # Left
-        (105, 265)    # Top-left
+        (485, 473), (295, 546), (290, 40),
+        (479, 100), (550, 280), (100, 470)
     ]
-    size = (110, 110)
+    sizes = [(130, 130)] * 6
 
-    for idx in range(min(8, len(item_ids))):
+    for idx in range(min(6, len(item_ids))):
         item_id = item_ids[idx]
         item_url = f"https://pika-ffitmes-api.vercel.app/?item_id={item_id}&watermark=TaitanApi&key=PikaApis"
 
         try:
             item_img = Image.open(BytesIO(requests.get(item_url).content)).convert("RGBA")
-            item_img = item_img.resize(size, Image.LANCZOS)
-
-            # Canh giữa hình khi dán vào base image
-            pos_x = positions[idx][0] - size[0] // 2
-            pos_y = positions[idx][1] - size[1] // 2
-
-            base.paste(item_img, (pos_x, pos_y), item_img)
+            item_img = item_img.resize(sizes[idx], Image.LANCZOS)
+            base.paste(item_img, positions[idx], item_img)
         except Exception as e:
             print(f"Error processing item {item_id}: {e}")
             continue
@@ -85,7 +75,7 @@ def generate_image():
     if not data or "AccountProfileInfo" not in data or "EquippedOutfit" not in data["AccountProfileInfo"]:
         return jsonify({"error": "Failed to fetch data. Recheck uid and region"}), 500
 
-    item_ids = data["AccountProfileInfo"]["EquippedOutfit"][:8]
+    item_ids = data["AccountProfileInfo"]["EquippedOutfit"][:6]
 
     final_image = overlay_images(BASE_IMAGE_URL, item_ids)
     if final_image is None:
